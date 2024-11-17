@@ -29,11 +29,12 @@ type Logger struct {
 	callerSkip    int
 }
 
-func New(opts ...Option) *Logger {
+// New 新建日志对象， 使用`opt ...`的目的是为了让New可以缺省参数使用，实际只使用到了opt[0]
+func New(opt ...Option) *Logger {
 	l := &Logger{}
 
-	for _, opt := range opts {
-		opt.apply(l)
+	if len(opt) > 0 {
+		l.WithOptions(opt[0])
 	}
 
 	if l.out == nil {
@@ -45,14 +46,43 @@ func New(opts ...Option) *Logger {
 	return l
 }
 
-// WithOptions returns a new Logger with the given Options.
-// It does not modify the original Logger.
-func (l *Logger) WithOptions(opts ...Option) *Logger {
-	c := l.clone()
-	for _, opt := range opts {
-		opt.apply(c)
+// WithOptions 修改当前的日志配置
+func (l *Logger) WithOptions(opt Option) {
+	if l.out == nil || opt.LogPath != "" {
+		if l.out != nil {
+			if lw, ok := l.out.(writer); ok {
+				lw.CloseLog()
+			}
+		}
+
+		if opt.LogPath == "" || opt.LogPath == "console" {
+			l.out = newConsoleWriter(consoleConfig{
+				Colorful: !opt.DisableLogColor,
+			})
+		} else {
+			writer := newRotateFileWriter(rotateFileConfig{
+				FileName: opt.LogPath,
+				Mode:     rotateFileModeDaily,
+				MaxDays:  opt.MaxDays,
+			})
+			writer.Init()
+			l.out = writer
+		}
 	}
-	return c
+
+	if opt.LogLevel != "" {
+		level, err := parseLevel(opt.LogLevel)
+		if err == nil {
+			l.level = level
+		}
+	}
+
+	l.tags = parseTags(opt.Tags)
+	l.callerEnabled = !opt.DisableCaller
+	if opt.CallerSkip > 0 {
+		l.callerSkip = opt.CallerSkip
+	}
+	return
 }
 
 func (l *Logger) clone() *Logger {

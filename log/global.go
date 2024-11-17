@@ -6,7 +6,7 @@ var logger = New(Option{
 })
 
 func Init(opt Option) {
-	logger = logger.WithOptions(opt)
+	logger.WithOptions(opt)
 }
 
 func Error(format string, v ...interface{}) {

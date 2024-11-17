@@ -39,6 +39,19 @@ log.Warn("sys", "带tag输出")
 // format 传入不带'%'格式化的tag字符串，v[0]为带'%'的格式化字符串,后面存在对应参数，format为tag，v为格式化字符串数组
 log.Error("sys", "带tag格式化输出 %10s", "符字串")
 log.Log(log.LevelInfo, 0, "net", "带tag格式化输出 %10s， %d", "符字串", 55)
+
+// 可以创建多个独立的日志对象单独输出
+errlog := log.New(log.Option{
+    LogPath:  "log/err.log",
+    LogLevel: "error",
+    MaxDays:  7,
+})
+errlog.Error("sys", "这是一个错误日志输出")
+
+mylog := log.New(log.Option{
+    LogPath: "console",
+})
+mylog.Trace("net", "mylog 日志输出")
 ```
 
 使用案例参考 [https://github.com/zngw/golib/blob/main/examples/log.go](https://github.com/zngw/golib/blob/main/examples/log.go)
