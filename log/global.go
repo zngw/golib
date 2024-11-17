@@ -2,6 +2,7 @@ package log
 
 var logger = New(Option{
 	DisableLogColor: false,
+	CallerSkip:      1,
 })
 
 func Init(opt Option) {
@@ -9,25 +10,25 @@ func Init(opt Option) {
 }
 
 func Error(format string, v ...interface{}) {
-	logger.log(LevelError, 0, format, v...)
+	logger.Error(format, v...)
 }
 
 func Warn(format string, v ...interface{}) {
-	logger.log(LevelWarn, 0, format, v...)
+	logger.Warn(format, v...)
 }
 
 func Info(format string, v ...interface{}) {
-	logger.log(LevelInfo, 0, format, v...)
+	logger.Info(format, v...)
 }
 
 func Debug(format string, v ...interface{}) {
-	logger.log(LevelDebug, 0, format, v...)
+	logger.Debug(format, v...)
 }
 
 func Trace(format string, v ...interface{}) {
-	logger.log(LevelTrace, 0, format, v...)
+	logger.Trace(format, v...)
 }
 
 func Log(level Level, offset int, msg string, args ...interface{}) {
-	logger.log(level, offset, msg, args...)
+	logger.Log(level, offset, msg, args...)
 }

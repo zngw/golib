@@ -43,5 +43,7 @@ func (opt *Option) apply(log *Logger) {
 
 	log.tags = parseTags(opt.Tags)
 	log.callerEnabled = !opt.DisableCaller
-	log.callerSkip = opt.CallerSkip
+	if opt.CallerSkip > 0 {
+		log.callerSkip = opt.CallerSkip
+	}
 }
