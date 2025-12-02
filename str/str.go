@@ -1,3 +1,7 @@
+// Package str
+// @Description 一些字符串与数字转换方法
+// @Author  55
+// @Date  2022/5/30
 package str
 
 import (

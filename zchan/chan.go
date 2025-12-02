@@ -1,5 +1,5 @@
-// @Title
-// @Description $ 无限缓存channel
+// Package zchan
+// @Description 无限缓存channel
 // @Author  55
 // @Date  2022/5/30
 package zchan
@@ -8,7 +8,7 @@ import (
 	"github.com/zngw/golib/ringbuffer"
 )
 
-type T interface{}
+type T any
 
 type ZChan struct {
 	In     chan<- T               // 写入channel

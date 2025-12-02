@@ -3,6 +3,7 @@ package crypt
 import (
 	"crypto/md5"
 	"encoding/hex"
+
 	"github.com/zngw/golib/str"
 )
 

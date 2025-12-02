@@ -6,8 +6,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/zngw/golib/zchan"
 	"time"
+
+	"github.com/zngw/golib/zchan"
 )
 
 func main() {

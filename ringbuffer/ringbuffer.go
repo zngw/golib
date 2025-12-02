@@ -1,4 +1,4 @@
-// @Title
+// Package ringbuffer
 // @Description $ 双向环形链表
 // @Author  55
 // @Date  2022/5/30
@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 )
 
-type T interface{}
+type T any
 
 var ErrIsEmpty = errors.New("ringbuffer is empty")
 
@@ -25,9 +25,9 @@ type cell struct {
 }
 
 type RingBuffer struct {
-	cellSize  int   // cell大小
-	cellCount int   // cell数量
-	count     int32 // 有效元素个数
+	cellSize  int          // cell大小
+	cellCount int          // cell数量
+	count     atomic.Int32 // 有效元素个数
 
 	readCell  *cell // 下一个要读的cell
 	writeCell *cell // 下一个要写的cell
@@ -54,7 +54,7 @@ func NewRingBuffer(cellSize int) (buf *RingBuffer, err error) {
 	buf = &RingBuffer{
 		cellSize:  cellSize,
 		cellCount: 2,
-		count:     0,
+		// count:   不需要显性初始化，默认为0
 		readCell:  rootCell,
 		writeCell: rootCell,
 	}
@@ -73,7 +73,7 @@ func (r *RingBuffer) Read() (data T, err error) {
 	// 读取数据，并将读指针向右移动一位
 	data = r.readCell.Data[r.readCell.r]
 	r.readCell.r++
-	atomic.AddInt32(&r.count, -1)
+	r.count.Add(-1)
 
 	// 此cell已经读完
 	if r.readCell.r == r.cellSize {
@@ -112,7 +112,7 @@ func (r *RingBuffer) Write(value T) {
 	// 在 r.writeCell.w 位置写入数据，指针向右移动一位
 	r.writeCell.Data[r.writeCell.w] = value
 	r.writeCell.w++
-	atomic.AddInt32(&r.count, 1)
+	r.count.Add(1)
 
 	// 当前cell写满了
 	if r.writeCell.w == r.cellSize {
@@ -163,14 +163,14 @@ func (r *RingBuffer) Capacity() int {
 
 // Len RingBuffer数据长度
 func (r *RingBuffer) Len() (count int) {
-	count = int(r.count)
+	count = int(r.count.Load())
 	return
 }
 
 // Reset 重置为仅指向两个cell的ring
 func (r *RingBuffer) Reset() {
 	// 没有数据切cellCount只有两个时，无需重置
-	if r.count == 0 && r.cellCount == 2 {
+	if r.Len() == 0 && r.cellCount == 2 {
 		return
 	}
 
@@ -181,7 +181,7 @@ func (r *RingBuffer) Reset() {
 	r.readCell.r = 0
 	r.readCell.w = 0
 	r.cellCount = 2
-	r.count = 0
+	r.count.Store(0)
 
 	lastCell.next = r.readCell
 }

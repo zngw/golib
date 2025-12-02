@@ -95,7 +95,7 @@ func (l *Logger) clone() *Logger {
 	return clone
 }
 
-func (l *Logger) log(level Level, offset int, msg string, args ...interface{}) {
+func (l *Logger) log(level Level, offset int, msg string, args ...any) {
 	show := l.level.Enabled(level)
 	if !show {
 		return
@@ -140,31 +140,31 @@ func (l *Logger) log(level Level, offset int, msg string, args ...interface{}) {
 	_, _ = l.out.Write([]byte(outMsg))
 }
 
-func (l *Logger) Error(format string, v ...interface{}) {
+func (l *Logger) Error(format string, v ...any) {
 	l.log(LevelError, 0, format, v...)
 }
 
-func (l *Logger) Warn(format string, v ...interface{}) {
+func (l *Logger) Warn(format string, v ...any) {
 	l.log(LevelWarn, 0, format, v...)
 }
 
-func (l *Logger) Info(format string, v ...interface{}) {
+func (l *Logger) Info(format string, v ...any) {
 	l.log(LevelInfo, 0, format, v...)
 }
 
-func (l *Logger) Debug(format string, v ...interface{}) {
+func (l *Logger) Debug(format string, v ...any) {
 	l.log(LevelDebug, 0, format, v...)
 }
 
-func (l *Logger) Trace(format string, v ...interface{}) {
+func (l *Logger) Trace(format string, v ...any) {
 	l.log(LevelTrace, 0, format, v...)
 }
 
-func (l *Logger) Log(level Level, offset int, msg string, args ...interface{}) {
+func (l *Logger) Log(level Level, offset int, msg string, args ...any) {
 	l.log(level, offset, msg, args...)
 }
 
-func getMessage(template string, fmtArgs []interface{}) string {
+func getMessage(template string, fmtArgs []any) string {
 	if len(fmtArgs) == 0 {
 		return template
 	}

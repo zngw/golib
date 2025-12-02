@@ -8,8 +8,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/zngw/golib/str"
 	"io"
+
+	"github.com/zngw/golib/str"
 )
 
 // GcmEncrypt 使用Aes-Gcm加密明文，出错时返回空字符串。
