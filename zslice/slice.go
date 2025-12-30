@@ -29,10 +29,10 @@ func NewSlice[T any]() *Slice[T] {
 }
 
 // Append 向 slice 末尾追加元素
-func (s *Slice[T]) Append(item T) {
+func (s *Slice[T]) Append(item ...T) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data = append(s.data, item)
+	s.data = append(s.data, item...)
 }
 
 // Get 获取指定索引的元素
@@ -87,6 +87,13 @@ func (s *Slice[T]) DeleteBy(equal func(T) bool) int {
 		}
 	}
 	return count
+}
+
+// Clear 清空切片，线程安全
+func (s *Slice[T]) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.data = nil // 更彻底地释放内存
 }
 
 // Range 遍历 slice（类似 map.Range）

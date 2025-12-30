@@ -11,9 +11,7 @@ func main() {
 	slice := zslice.NewSlice[string]()
 
 	// 添加数据
-	for _, v := range []string{"aa", "bb", "cc", "aa", "ddd"} {
-		slice.Append(v)
-	}
+	slice.Append("aa", "bb", "cc", "aa", "ddd")
 
 	fmt.Println("初始数据:", slice.ToSlice())
 
