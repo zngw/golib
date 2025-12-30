@@ -1,5 +1,5 @@
 // @Title
-// @Description $
+// @Description
 // @Author  55
 // @Date  2022/5/30
 package main
@@ -18,7 +18,7 @@ func main() {
 	}
 
 	go func() {
-		// 写入channel数据
+		// 写入chan数据
 		// 10毫秒写入1次
 		for i := 1000; i < 2000; i++ {
 			zc.In <- i
