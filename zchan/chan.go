@@ -8,34 +8,32 @@ import (
 	"github.com/zngw/golib/ringbuffer"
 )
 
-type T any
-
-type ZChan struct {
-	In     chan<- T               // 写入channel
-	Out    <-chan T               // 读取channel
-	buffer *ringbuffer.RingBuffer // 双向环形链表
+type ZChan[T any] struct {
+	In     chan<- T                  // 写入channel
+	Out    <-chan T                  // 读取channel
+	buffer *ringbuffer.RingBuffer[T] // 双向环形链表
 }
 
 // Len uc中总共的元素数量
-func (uc *ZChan) Len() int {
+func (uc *ZChan[T]) Len() int {
 	return len(uc.In) + uc.BufLen() + len(uc.Out)
 }
 
 // BufLen uc的buf中的元素数量
-func (uc *ZChan) BufLen() int {
+func (uc *ZChan[T]) BufLen() int {
 	return uc.buffer.Len()
 }
 
 // New 新建一个无限缓存的Channel，并指定In和Out大小(In和Out设置得一样大)
-func New(initCapacity int) (ch *ZChan, err error) {
-	rb, err := ringbuffer.NewRingBuffer(512)
+func New[T any](initCapacity int) (ch *ZChan[T], err error) {
+	rb, err := ringbuffer.NewRingBuffer[T](512)
 	if err != nil {
 		return
 	}
 
 	in := make(chan T, initCapacity)
 	out := make(chan T, initCapacity)
-	ch = &ZChan{In: in, Out: out, buffer: rb}
+	ch = &ZChan[T]{In: in, Out: out, buffer: rb}
 
 	go process(in, out, ch)
 
@@ -43,7 +41,7 @@ func New(initCapacity int) (ch *ZChan, err error) {
 }
 
 // 内部Worker Goroutine实现
-func process(in, out chan T, ch *ZChan) {
+func process[T any](in, out chan T, ch *ZChan[T]) {
 	defer close(out) // in 关闭，数据读取后也把out关闭
 
 	// 不断从in中读取数据放入到out或者buf中

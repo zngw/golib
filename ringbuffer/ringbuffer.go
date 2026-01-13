@@ -10,40 +10,38 @@ import (
 	"sync/atomic"
 )
 
-type T any
-
 var ErrIsEmpty = errors.New("ringbuffer is empty")
 
-type cell struct {
-	Data     []T   // 数据部分
-	fullFlag bool  // cell满的标志
-	next     *cell // 指向后一个cellBuffer
-	pre      *cell // 指向前一个cellBuffer
+type cell[T any] struct {
+	Data     []T      // 数据部分
+	fullFlag bool     // cell满的标志
+	next     *cell[T] // 指向后一个cellBuffer
+	pre      *cell[T] // 指向前一个cellBuffer
 
 	r int // 下一个要读的指针
 	w int // 下一个要下的指针
 }
 
-type RingBuffer struct {
+type RingBuffer[T any] struct {
 	cellSize  int          // cell大小
 	cellCount int          // cell数量
 	count     atomic.Int32 // 有效元素个数
 
-	readCell  *cell // 下一个要读的cell
-	writeCell *cell // 下一个要写的cell
+	readCell  *cell[T] // 下一个要读的cell
+	writeCell *cell[T] // 下一个要写的cell
 }
 
 // NewRingBuffer 新建一个RingBuffer，包含两个cell
-func NewRingBuffer(cellSize int) (buf *RingBuffer, err error) {
+func NewRingBuffer[T any](cellSize int) (buf *RingBuffer[T], err error) {
 	if cellSize <= 0 || cellSize&(cellSize-1) != 0 {
 		err = fmt.Errorf("初始大小必须是 2 的幂")
 		return
 	}
 
-	rootCell := &cell{
+	rootCell := &cell[T]{
 		Data: make([]T, cellSize),
 	}
-	lastCell := &cell{
+	lastCell := &cell[T]{
 		Data: make([]T, cellSize),
 	}
 	rootCell.pre = lastCell
@@ -51,7 +49,7 @@ func NewRingBuffer(cellSize int) (buf *RingBuffer, err error) {
 	rootCell.next = lastCell
 	lastCell.next = rootCell
 
-	buf = &RingBuffer{
+	buf = &RingBuffer[T]{
 		cellSize:  cellSize,
 		cellCount: 2,
 		// count:   不需要显性初始化，默认为0
@@ -63,7 +61,7 @@ func NewRingBuffer(cellSize int) (buf *RingBuffer, err error) {
 }
 
 // Read 读取数据
-func (r *RingBuffer) Read() (data T, err error) {
+func (r *RingBuffer[T]) Read() (data T, err error) {
 	// 无数据
 	if r.IsEmpty() {
 		err = ErrIsEmpty
@@ -88,7 +86,7 @@ func (r *RingBuffer) Read() (data T, err error) {
 }
 
 // Pop 读一个元素，读完后移动指针
-func (r *RingBuffer) Pop() (data T) {
+func (r *RingBuffer[T]) Pop() (data T) {
 	data, err := r.Read()
 	if errors.Is(err, ErrIsEmpty) {
 		panic(ErrIsEmpty.Error())
@@ -97,7 +95,7 @@ func (r *RingBuffer) Pop() (data T) {
 }
 
 // Peek 窥视 读一个元素，仅读但不移动指针
-func (r *RingBuffer) Peek() (data T) {
+func (r *RingBuffer[T]) Peek() (data T) {
 	if r.IsEmpty() {
 		panic(ErrIsEmpty.Error())
 	}
@@ -108,7 +106,7 @@ func (r *RingBuffer) Peek() (data T) {
 }
 
 // Write 写入数据
-func (r *RingBuffer) Write(value T) {
+func (r *RingBuffer[T]) Write(value T) {
 	// 在 r.writeCell.w 位置写入数据，指针向右移动一位
 	r.writeCell.Data[r.writeCell.w] = value
 	r.writeCell.w++
@@ -129,9 +127,9 @@ func (r *RingBuffer) Write(value T) {
 }
 
 // grow 扩容
-func (r *RingBuffer) grow() {
+func (r *RingBuffer[T]) grow() {
 	// 新建一个cell
-	newCell := &cell{
+	newCell := &cell[T]{
 		Data: make([]T, r.cellSize),
 	}
 
@@ -152,23 +150,23 @@ func (r *RingBuffer) grow() {
 }
 
 // IsEmpty 判断RingBuffer是否为空
-func (r *RingBuffer) IsEmpty() bool {
+func (r *RingBuffer[T]) IsEmpty() bool {
 	return r.Len() == 0
 }
 
 // Capacity RingBuffer容量
-func (r *RingBuffer) Capacity() int {
+func (r *RingBuffer[T]) Capacity() int {
 	return r.cellCount * r.cellSize
 }
 
 // Len RingBuffer数据长度
-func (r *RingBuffer) Len() (count int) {
+func (r *RingBuffer[T]) Len() (count int) {
 	count = int(r.count.Load())
 	return
 }
 
 // Reset 重置为仅指向两个cell的ring
-func (r *RingBuffer) Reset() {
+func (r *RingBuffer[T]) Reset() {
 	// 没有数据切cellCount只有两个时，无需重置
 	if r.Len() == 0 && r.cellCount == 2 {
 		return

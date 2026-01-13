@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	zc, err := zchan.New(4)
+	zc, err := zchan.New[int](4)
 	if err != nil {
 		panic(err.Error())
 	}

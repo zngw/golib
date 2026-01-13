@@ -8,8 +8,8 @@
 | 双向环形链表 | ringbuffer | |
 | 无限缓存chan | zchan | 一个使用双向环形链表，能无限缓存的chan通道 |
 | 并发安全Set集合 | set | 一个基于sync.Map封装的线程安全Set集合 |
-| 并发安全Map | zmap | 封装sync.Map, 添加一个源子计数，容易获取map数量|
-| 并发安全切片| zslice | 封装一个可线程安全的Slice，未使用分段锁， 10k量级，超出性能急降|
+| 并发安全Map | zmap | 一个并发安全的Map，适用于高频读极少写，keys小于1000的map|
+| 并发安全切片| zslice | 封装一个并发安全的Slice，未使用分段锁， 10k量级，超出性能急降|
 |字符串与数字转换| str | 一些字符串与数字转换方法 |
 | 加密算法封装 | crypt | 集成md5、hmac Hash算法，aes、des对称加密，rsa非对称加密 |
 
@@ -52,7 +52,11 @@ go get -u github.com/zngw/golib
 
 ### 并发安全Map
 
-* 封装sync.Map, 添加一个源子计数，容易获取map数量，其他接口如 sync.Map一样
+* 一个并发安全的Map，使用 sync.RWMutex + 普通 map 实现
+* 适用于高频读极少写，keys小于1000的map，读性能比sync.Map快2~5倍
+* 提供类似于sync.Map的Load, Store, Delete, LoadOrStore，Len, Range, ListKeys等方法
+
+使用案例参考 [https://github.com/zngw/golib/blob/main/examples/zmap.go](https://github.com/zngw/golib/blob/main/examples/zmap.go)
 
 ### 并发安全切片
 

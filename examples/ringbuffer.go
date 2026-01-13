@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// 初始化单元大小为4的RingBuffer
-	rb, err := ringbuffer.NewRingBuffer(4)
+	rb, err := ringbuffer.NewRingBuffer[int](4)
 	if err != nil {
 		panic(err.Error())
 	}
