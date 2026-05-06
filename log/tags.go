@@ -16,7 +16,7 @@ func (t *tags) GetTag(tag string) (msg string, show bool) {
 		}
 	}
 
-	msg = "[Tag:" + tag + "] "
+	msg = "[" + tag + "] "
 	show = true
 
 	return

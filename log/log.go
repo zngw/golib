@@ -104,18 +104,19 @@ func (l *Logger) log(level Level, offset int, msg string, args ...any) {
 	tag := ""
 	if len(args) > 0 && strings.Count(msg, "%")-strings.Count(msg, "%%")*2 == 0 {
 		// 大于一个参数，有占位符
-		tag = msg
-		msg = args[0].(string)
-		args = args[1:]
+		if str, ok := args[0].(string); ok {
+			tag = msg
+			msg = str
+			args = args[1:]
+		}
 	}
 
 	tag, show = l.tags.GetTag(tag)
 	if !show {
 		return
-	} else {
-		msg = tag + msg
 	}
 
+	msg = tag + msg
 	caller := ""
 	if l.callerEnabled {
 		caller = getCallerPrefix(3 + l.callerSkip + offset)

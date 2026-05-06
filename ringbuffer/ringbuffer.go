@@ -7,7 +7,7 @@ package ringbuffer
 import (
 	"errors"
 	"fmt"
-	"sync/atomic"
+	"sync"
 )
 
 var ErrIsEmpty = errors.New("ringbuffer is empty")
@@ -23,9 +23,10 @@ type cell[T any] struct {
 }
 
 type RingBuffer[T any] struct {
-	cellSize  int          // cell大小
-	cellCount int          // cell数量
-	count     atomic.Int32 // 有效元素个数
+	mu        sync.RWMutex
+	cellSize  int // cell大小
+	cellCount int // cell数量
+	count     int // 有效元素个数
 
 	readCell  *cell[T] // 下一个要读的cell
 	writeCell *cell[T] // 下一个要写的cell
@@ -62,8 +63,10 @@ func NewRingBuffer[T any](cellSize int) (buf *RingBuffer[T], err error) {
 
 // Read 读取数据
 func (r *RingBuffer[T]) Read() (data T, err error) {
-	// 无数据
-	if r.IsEmpty() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.count == 0 {
 		err = ErrIsEmpty
 		return
 	}
@@ -71,7 +74,7 @@ func (r *RingBuffer[T]) Read() (data T, err error) {
 	// 读取数据，并将读指针向右移动一位
 	data = r.readCell.Data[r.readCell.r]
 	r.readCell.r++
-	r.count.Add(-1)
+	r.count--
 
 	// 此cell已经读完
 	if r.readCell.r == r.cellSize {
@@ -89,15 +92,20 @@ func (r *RingBuffer[T]) Read() (data T, err error) {
 func (r *RingBuffer[T]) Pop() (data T) {
 	data, err := r.Read()
 	if errors.Is(err, ErrIsEmpty) {
-		panic(ErrIsEmpty.Error())
+		fmt.Print(ErrIsEmpty.Error())
+		return
 	}
 	return
 }
 
 // Peek 窥视 读一个元素，仅读但不移动指针
 func (r *RingBuffer[T]) Peek() (data T) {
-	if r.IsEmpty() {
-		panic(ErrIsEmpty.Error())
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if r.count == 0 {
+		fmt.Print(ErrIsEmpty.Error())
+		return
 	}
 
 	// 仅读
@@ -107,10 +115,13 @@ func (r *RingBuffer[T]) Peek() (data T) {
 
 // Write 写入数据
 func (r *RingBuffer[T]) Write(value T) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	// 在 r.writeCell.w 位置写入数据，指针向右移动一位
 	r.writeCell.Data[r.writeCell.w] = value
 	r.writeCell.w++
-	r.count.Add(1)
+	r.count++
 
 	// 当前cell写满了
 	if r.writeCell.w == r.cellSize {
@@ -121,12 +132,12 @@ func (r *RingBuffer[T]) Write(value T) {
 	}
 
 	// 下一个cell也已满，扩容
-	if r.writeCell.fullFlag == true {
+	if r.writeCell.fullFlag {
 		r.grow()
 	}
 }
 
-// grow 扩容
+// grow 扩容（调用方需持有锁）
 func (r *RingBuffer[T]) grow() {
 	// 新建一个cell
 	newCell := &cell[T]{
@@ -156,30 +167,50 @@ func (r *RingBuffer[T]) IsEmpty() bool {
 
 // Capacity RingBuffer容量
 func (r *RingBuffer[T]) Capacity() int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	return r.cellCount * r.cellSize
 }
 
 // Len RingBuffer数据长度
 func (r *RingBuffer[T]) Len() (count int) {
-	count = int(r.count.Load())
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	count = r.count
 	return
 }
 
 // Reset 重置为仅指向两个cell的ring
 func (r *RingBuffer[T]) Reset() {
 	// 没有数据切cellCount只有两个时，无需重置
-	if r.Len() == 0 && r.cellCount == 2 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.count == 0 && r.cellCount == 2 {
 		return
 	}
 
-	lastCell := r.readCell.next
+	// 保存两个保留的cell
+	keepFirst := r.readCell
+	keepLast := r.readCell.next
 
-	lastCell.w = 0
-	lastCell.r = 0
-	r.readCell.r = 0
-	r.readCell.w = 0
+	// 断开中间cell的引用，帮助GC回收
+	// 从keepLast.next开始遍历，直到回到keepFirst
+	cur := keepLast.next
+	for cur != keepFirst {
+		next := cur.next
+		cur.next = nil
+		cur.pre = nil
+		cur = next
+	}
+
+	keepLast.w = 0
+	keepLast.r = 0
+	keepFirst.r = 0
+	keepFirst.w = 0
 	r.cellCount = 2
-	r.count.Store(0)
+	r.count = 0
 
-	lastCell.next = r.readCell
+	keepLast.next = keepFirst
+	keepFirst.pre = keepLast
 }

@@ -32,9 +32,10 @@ type rotateFileConfig struct {
 type rotateFileWriter struct {
 	cfg rotateFileConfig
 
-	mu   sync.Mutex
-	file *os.File
-	done chan struct{}
+	mu     sync.Mutex
+	file   *os.File
+	stopCh chan struct{}
+	wg     sync.WaitGroup
 }
 
 func newRotateFileWriter(cfg rotateFileConfig) *rotateFileWriter {
@@ -42,21 +43,36 @@ func newRotateFileWriter(cfg rotateFileConfig) *rotateFileWriter {
 		cfg.FileName = defaultLogFileName
 	}
 	fw := &rotateFileWriter{
-		cfg:  cfg,
-		done: make(chan struct{}),
+		cfg:    cfg,
+		stopCh: make(chan struct{}),
 	}
 	return fw
+}
+
+func (fw *rotateFileWriter) stopDailyGoroutine() {
+	if fw.stopCh != nil {
+		select {
+		case <-fw.stopCh:
+		default:
+			close(fw.stopCh)
+		}
+		fw.wg.Wait()
+		fw.stopCh = nil
+	}
 }
 
 func (fw *rotateFileWriter) Init() {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
-	if fw.done != nil {
-		close(fw.done)
-	}
-	fw.done = make(chan struct{})
+	fw.stopDailyGoroutine()
+	fw.stopCh = make(chan struct{})
 	if fw.cfg.Mode == rotateFileModeDaily {
-		go fw.dailyRotate()
+		stopCh := fw.stopCh
+		fw.wg.Add(1)
+		go func() {
+			defer fw.wg.Done()
+			fw.dailyRotate(stopCh)
+		}()
 	}
 }
 
@@ -173,24 +189,18 @@ func (fw *rotateFileWriter) dir() string {
 	return filepath.Dir(fw.cfg.FileName)
 }
 
-func (fw *rotateFileWriter) dailyRotate() {
-	fw.mu.Lock()
-	doneCh := fw.done
-	fw.mu.Unlock()
+func (fw *rotateFileWriter) dailyRotate(stopCh <-chan struct{}) {
 	for {
 		now := time.Now()
-		// Calculate the time difference until the next hour.
 		nextHour := now.Truncate(time.Hour).Add(time.Hour)
 		select {
 		case <-time.After(nextHour.Sub(now)):
-		case <-doneCh:
+		case <-stopCh:
 			return
 		}
 
-		// Rotate the log file at 0 hour of the day.
 		if nextHour.Hour() == 0 {
 			_ = fw.Rotate()
-			// Ensure it's executed only once, even if the waiting period crosses midnight.
 			time.Sleep(time.Minute)
 		}
 	}
@@ -265,10 +275,7 @@ func (fw *rotateFileWriter) clearFiles() error {
 func (fw *rotateFileWriter) Close() error {
 	fw.mu.Lock()
 	defer fw.mu.Unlock()
-	if fw.done != nil {
-		close(fw.done)
-		fw.done = nil
-	}
+	fw.stopDailyGoroutine()
 	return fw.closeFile()
 }
 

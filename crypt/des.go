@@ -5,7 +5,7 @@ import (
 	"crypto/des"
 )
 
-// DesEcbEncrypt DES ECB加密
+// DesEcbEncrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesEcbEncrypt(data, key []byte) []byte {
 	//NewCipher创建一个新的加密块
 	block, err := des.NewCipher(key)
@@ -30,7 +30,7 @@ func DesEcbEncrypt(data, key []byte) []byte {
 	return out
 }
 
-// DesEcbDecrypt DES ECB解密
+// DesEcbDecrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesEcbDecrypt(data, key []byte) []byte {
 	//NewCipher创建一个新的加密块
 	block, err := des.NewCipher(key)
@@ -57,7 +57,7 @@ func DesEcbDecrypt(data, key []byte) []byte {
 	return out
 }
 
-// DesCbcEncrypt DES CBC加密
+// DesCbcEncrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesCbcEncrypt(data, key, iv []byte) []byte {
 	block, err := des.NewCipher(key)
 	if err != nil {
@@ -72,7 +72,7 @@ func DesCbcEncrypt(data, key, iv []byte) []byte {
 	return cryptText
 }
 
-// DesCbcDecrypt DES CBC解密
+// DesCbcDecrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesCbcDecrypt(data, key, iv []byte) []byte {
 	block, err := des.NewCipher(key)
 	if err != nil {
@@ -87,7 +87,7 @@ func DesCbcDecrypt(data, key, iv []byte) []byte {
 	return cryptText
 }
 
-// DesCtrEncrypt DES CTR加密
+// DesCtrEncrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesCtrEncrypt(data, key, iv []byte) []byte {
 	block, err := des.NewCipher(key)
 	if err != nil {
@@ -102,7 +102,7 @@ func DesCtrEncrypt(data, key, iv []byte) []byte {
 	return cryptText
 }
 
-// DesCtrDecrypt DES CTR解密
+// DesCtrDecrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesCtrDecrypt(data, key, iv []byte) []byte {
 	block, err := des.NewCipher(key)
 	if err != nil {
@@ -117,7 +117,7 @@ func DesCtrDecrypt(data, key, iv []byte) []byte {
 	return cryptText
 }
 
-// DesOfbEncrypt DES OFB加密
+// DesOfbEncrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesOfbEncrypt(data, key, iv []byte) []byte {
 	block, err := des.NewCipher(key)
 	if err != nil {
@@ -132,7 +132,7 @@ func DesOfbEncrypt(data, key, iv []byte) []byte {
 	return cryptText
 }
 
-// DesOfbDecrypt DES OFB解密
+// DesOfbDecrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesOfbDecrypt(data, key, iv []byte) []byte {
 	block, err := des.NewCipher(key)
 	if err != nil {
@@ -147,7 +147,7 @@ func DesOfbDecrypt(data, key, iv []byte) []byte {
 	return cryptText
 }
 
-// DesCfbEncrypt DES CFB加密
+// DesCfbEncrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesCfbEncrypt(data, key, iv []byte) []byte {
 	block, err := des.NewCipher(key)
 	if err != nil {
@@ -157,19 +157,19 @@ func DesCfbEncrypt(data, key, iv []byte) []byte {
 	data = pkcs5Padding(data, block.BlockSize())
 	cryptText := make([]byte, len(data))
 
-	blockMode := cipher.NewCFBDecrypter(block, iv)
+	blockMode := cipher.NewCFBEncrypter(block, iv)
 	blockMode.XORKeyStream(cryptText, data)
 	return cryptText
 }
 
-// DesCfbDecrypt DES CFB解密
+// DesCfbDecrypt [遗留兼容] DES密钥仅56位有效长度，安全性不足，新代码请使用 AES-GCM。
 func DesCfbDecrypt(data, key, iv []byte) []byte {
 	block, err := des.NewCipher(key)
 	if err != nil {
 		return nil
 	}
 
-	blockMode := cipher.NewCFBEncrypter(block, iv)
+	blockMode := cipher.NewCFBDecrypter(block, iv)
 	cryptText := make([]byte, len(data))
 	blockMode.XORKeyStream(cryptText, data)
 	cryptText = pkcs5UnPadding(cryptText)

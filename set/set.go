@@ -51,10 +51,7 @@ func (s *Set) Len() int {
 
 // Clear 清除
 func (s *Set) Clear() {
-	s.m.Range(func(k, v any) bool {
-		s.Remove(k)
-		return true
-	})
+	s.m.Clear()
 }
 
 // IsEmpty 判断是否为空

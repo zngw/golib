@@ -3,13 +3,14 @@ package crypt
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 )
 
-// RSAEncryptWithPublicKey 用公钥加密
+// RSAEncryptWithPublicKey 用公钥加密（OAEP填充）
 func RSAEncryptWithPublicKey(message string, publicKeyPEM string) (string, error) {
 	block, _ := pem.Decode([]byte(publicKeyPEM))
 	if block == nil {
@@ -21,7 +22,8 @@ func RSAEncryptWithPublicKey(message string, publicKeyPEM string) (string, error
 		return "", err
 	}
 
-	encryptedBytes, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey.(*rsa.PublicKey), []byte(message))
+	hash := sha256.New()
+	encryptedBytes, err := rsa.EncryptOAEP(hash, rand.Reader, publicKey.(*rsa.PublicKey), []byte(message), nil)
 	if err != nil {
 		return "", err
 	}
@@ -29,7 +31,7 @@ func RSAEncryptWithPublicKey(message string, publicKeyPEM string) (string, error
 	return base64.StdEncoding.EncodeToString(encryptedBytes), nil
 }
 
-// RSADecryptWithPrivateKey 用私钥解密
+// RSADecryptWithPrivateKey 用私钥解密（OAEP填充）
 func RSADecryptWithPrivateKey(encryptedMessage string, privateKeyPEM string) (string, error) {
 	encryptedBytes, err := base64.StdEncoding.DecodeString(encryptedMessage)
 	if err != nil {
@@ -46,7 +48,8 @@ func RSADecryptWithPrivateKey(encryptedMessage string, privateKeyPEM string) (st
 		return "", err
 	}
 
-	decryptedBytes, err := rsa.DecryptPKCS1v15(rand.Reader, privateKey, encryptedBytes)
+	hash := sha256.New()
+	decryptedBytes, err := rsa.DecryptOAEP(hash, rand.Reader, privateKey, encryptedBytes, nil)
 	if err != nil {
 		return "", err
 	}

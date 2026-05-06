@@ -5,14 +5,11 @@
 package str
 
 import (
-	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"os"
+	"math/big"
 	"strconv"
-	"sync/atomic"
-	"time"
 )
 
 // StringToInt 字符串转整型
@@ -28,7 +25,7 @@ func StringToInt(str string) (i int) {
 
 // StringToFloat 字符串转浮点型
 func StringToFloat(str string) (f float64) {
-	f, err := strconv.ParseFloat(str, 32)
+	f, err := strconv.ParseFloat(str, 64)
 	if err != nil {
 		return
 	}
@@ -96,20 +93,17 @@ func ToBytes(a any) []byte {
 	}
 }
 
-var seedCounter int64
-
-// RandString 生成指定长度的随机字符串
+// RandString 使用crypto/rand生成指定长度的密码安全随机字符串
 func RandString(codeLen int) string {
-	// 1. 定义原始字符串
 	rawStr := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
-	// 2. 定义一个buf，并且将buf交给bytes往buf中写数据
-	buf := make([]byte, 0, codeLen)
-	b := bytes.NewBuffer(buf)
-	// 随机从中获取
-	random := rand.New(rand.NewSource(time.Now().UnixNano() ^ int64(os.Getegid()) ^ atomic.AddInt64(&seedCounter, 1)))
-	for rawStrLen := len(rawStr); codeLen > 0; codeLen-- {
-		randNum := random.Intn(rawStrLen)
-		b.WriteByte(rawStr[randNum])
+	rawStrLen := big.NewInt(int64(len(rawStr)))
+	buf := make([]byte, codeLen)
+	for i := range buf {
+		n, err := rand.Int(rand.Reader, rawStrLen)
+		if err != nil {
+			panic("crypto/rand failed: " + err.Error())
+		}
+		buf[i] = rawStr[n.Int64()]
 	}
-	return b.String()
+	return string(buf)
 }

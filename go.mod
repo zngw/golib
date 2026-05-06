@@ -1,3 +1,3 @@
 module github.com/zngw/golib
 
-go 1.22
+go 1.26.2

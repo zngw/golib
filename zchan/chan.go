@@ -5,6 +5,8 @@
 package zchan
 
 import (
+	"time"
+
 	"github.com/zngw/golib/ringbuffer"
 )
 
@@ -58,7 +60,6 @@ loop:
 		if ch.buffer.Len() > 0 {
 			// 当buf中有数据时，新数据优先存放到buf中，确保数据FIFO原则
 			ch.buffer.Write(value)
-
 		} else {
 			// out 没有满,数据放入out中
 			select {
@@ -94,8 +95,19 @@ loop:
 		}
 	}
 
-	// in被关闭退出loop后，buf中还有可能有未处理的数据，将他们塞入out中，并重置buf
+	// in被关闭后，将buf中剩余数据排入out，使用超时防止out已满时永久阻塞
+	drainTimeout := time.Second * 5
+	timer := time.NewTimer(drainTimeout)
+	defer timer.Stop()
+
+drain:
 	for ch.buffer.Len() > 0 {
-		out <- ch.buffer.Pop()
+		val := ch.buffer.Pop()
+		timer.Reset(drainTimeout)
+		select {
+		case out <- val:
+		case <-timer.C:
+			break drain
+		}
 	}
 }
