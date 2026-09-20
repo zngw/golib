@@ -81,4 +81,15 @@ func main() {
 	} else {
 		fmt.Println("\n❌ RSA 加解密失败！")
 	}
+
+	// 用私钥签名
+	sign, err := crypt.SHA256WithRSASign(originalMessage, privatePEM)
+
+	// 用公钥验签
+	ok, err := crypt.SHA256WithRSAVerify(originalMessage, sign, publicPEM)
+	if ok {
+		fmt.Println("\n✅ RSA 验签成功！")
+	} else {
+		fmt.Println("\n❌ RSA 验签失败！")
+	}
 }
