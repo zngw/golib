@@ -9,46 +9,65 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"strings"
 )
 
 // LoadPrivateKey 从字符串中加载RSA私钥
 func LoadPrivateKey(prvKey string) (*rsa.PrivateKey, error) {
-	// 检查是否包含-----BEGIN RSA PRIVATE KEY-----
-	if strings.Index(prvKey, "-----BEGIN RSA PRIVATE KEY-----") < 0 {
-		prvKey = fmt.Sprintf("-----BEGIN RSA PRIVATE KEY-----\n%v\n-----END PUBLIC KEY-----", prvKey)
-	}
 	block, _ := pem.Decode([]byte(prvKey))
-	if block == nil || block.Type != "RSA PRIVATE KEY" {
-		return nil, fmt.Errorf("failed to decode PEM block containing private key")
+	if block == nil {
+		return nil, fmt.Errorf("解析 PEM 失败")
 	}
 
-	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
+	switch block.Type {
+	case "RSA PRIVATE KEY":
+		// PKCS#1 格式
+		return x509.ParsePKCS1PrivateKey(block.Bytes)
 
-	return privateKey, nil
+	case "PRIVATE KEY":
+		// PKCS#8 格式
+		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		rsaKey, ok := key.(*rsa.PrivateKey)
+		if !ok {
+			return nil, fmt.Errorf("不是 RSA 私钥")
+		}
+		return rsaKey, nil
+
+	default:
+		return nil, fmt.Errorf("不支持的私钥类型: %s", block.Type)
+	}
 }
 
 // LoadPublicKey 从字符串中加载RSA公钥
 func LoadPublicKey(pubKey string) (*rsa.PublicKey, error) {
-	// 检查是否包含-----BEGIN PUBLIC KEY-----
-	if strings.Index(pubKey, "-----BEGIN PUBLIC KEY-----") < 0 {
-		pubKey = fmt.Sprintf("-----BEGIN PUBLIC KEY-----\n%v\n-----END PUBLIC KEY-----", pubKey)
-	}
-
 	block, _ := pem.Decode([]byte(pubKey))
 	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block")
+		return nil, fmt.Errorf("解析 PEM 失败")
 	}
 
-	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
+	switch block.Type {
+	case "PUBLIC KEY":
+		// PKCS#8 / SubjectPublicKeyInfo 格式
+		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("解析 PKIX 公钥失败: %v", err)
+		}
 
-	return publicKey.(*rsa.PublicKey), nil
+		rsaPub, ok := pub.(*rsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("不是 RSA 公钥")
+		}
+		return rsaPub, nil
+
+	case "RSA PUBLIC KEY":
+		// PKCS#1 格式
+		return x509.ParsePKCS1PublicKey(block.Bytes)
+
+	default:
+		return nil, fmt.Errorf("不支持的公钥类型: %s", block.Type)
+	}
 }
 
 // RSAEncryptWithPublicKey 用公钥加密（OAEP填充）
