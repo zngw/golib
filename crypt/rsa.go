@@ -9,65 +9,137 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
+	"strings"
 )
 
-// LoadPrivateKey 从字符串中加载RSA私钥
-func LoadPrivateKey(prvKey string) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(prvKey))
-	if block == nil {
-		return nil, fmt.Errorf("解析 PEM 失败")
+// LoadPublicKey 加载公钥
+// 支持：
+// - PEM：-----BEGIN PUBLIC KEY-----
+// - PEM：-----BEGIN RSA PUBLIC KEY-----
+// - 纯 Base64 字符串
+// - DER 字节
+func LoadPublicKey(pubKey string) (*rsa.PublicKey, error) {
+	if len(pubKey) == 0 {
+		return nil, fmt.Errorf("公钥内容为空")
 	}
 
-	switch block.Type {
-	case "RSA PRIVATE KEY":
-		// PKCS#1 格式
-		return x509.ParsePKCS1PrivateKey(block.Bytes)
+	// 1. 先尝试 PEM 解析
+	if block, _ := pem.Decode([]byte(pubKey)); block != nil {
+		return parsePublicKeyPEM(block)
+	}
 
+	// 2. PEM 失败，按 Base64 / DER 解析
+	return parsePublicKeyBase64OrDER([]byte(pubKey))
+}
+
+// parsePublicKeyPEM 根据 PEM 头解析公钥
+func parsePublicKeyPEM(block *pem.Block) (*rsa.PublicKey, error) {
+	switch block.Type {
+	case "PUBLIC KEY":
+		key, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+
+		return key.(*rsa.PublicKey), nil
+
+	case "RSA PUBLIC KEY":
+		return x509.ParsePKCS1PublicKey(block.Bytes)
+
+	default:
+		return nil, fmt.Errorf("不支持的公钥 PEM 类型: %s", block.Type)
+	}
+}
+
+// parsePublicKeyBase64OrDER 处理没有 PEM 头的公钥
+func parsePublicKeyBase64OrDER(data []byte) (*rsa.PublicKey, error) {
+	der, err := decodeToDER(data)
+	if err != nil {
+		return nil, err
+	}
+
+	// 先尝试 PKIX 公钥
+	if pub, err := x509.ParsePKIXPublicKey(der); err == nil {
+		return pub.(*rsa.PublicKey), nil
+	}
+
+	// 再尝试 PKCS#1 RSA 公钥
+	if pub, err := x509.ParsePKCS1PublicKey(der); err == nil {
+		return pub, nil
+	}
+
+	return nil, fmt.Errorf("无法识别公钥格式")
+}
+
+// LoadPrivateKey 加载私钥
+// 支持：
+// - PEM：-----BEGIN PRIVATE KEY-----
+// - PEM：-----BEGIN RSA PRIVATE KEY-----
+// - 纯 Base64 字符串
+// - DER 字节
+func LoadPrivateKey(prvKey string) (*rsa.PrivateKey, error) {
+	if len(prvKey) == 0 {
+		return nil, fmt.Errorf("私钥内容为空")
+	}
+
+	// 1. 先尝试 PEM 解析
+	if block, _ := pem.Decode([]byte(prvKey)); block != nil {
+		return parsePrivateKeyPEM(block)
+	}
+
+	// 2. PEM 失败，按 Base64 / DER 解析
+	return parsePrivateKeyBase64OrDER([]byte(prvKey))
+}
+
+// parsePrivateKeyPEM 根据 PEM 头解析私钥
+func parsePrivateKeyPEM(block *pem.Block) (*rsa.PrivateKey, error) {
+	switch block.Type {
 	case "PRIVATE KEY":
-		// PKCS#8 格式
 		key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 		if err != nil {
 			return nil, err
 		}
-		rsaKey, ok := key.(*rsa.PrivateKey)
-		if !ok {
-			return nil, fmt.Errorf("不是 RSA 私钥")
-		}
-		return rsaKey, nil
+		return key.(*rsa.PrivateKey), nil
+
+	case "RSA PRIVATE KEY":
+		return x509.ParsePKCS1PrivateKey(block.Bytes)
 
 	default:
-		return nil, fmt.Errorf("不支持的私钥类型: %s", block.Type)
+		return nil, fmt.Errorf("不支持的私钥 PEM 类型: %s", block.Type)
 	}
 }
 
-// LoadPublicKey 从字符串中加载RSA公钥
-func LoadPublicKey(pubKey string) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode([]byte(pubKey))
-	if block == nil {
-		return nil, fmt.Errorf("解析 PEM 失败")
+// parsePrivateKeyBase64OrDER 处理没有 PEM 头的私钥
+func parsePrivateKeyBase64OrDER(data []byte) (*rsa.PrivateKey, error) {
+	der, err := decodeToDER(data)
+	if err != nil {
+		return nil, err
 	}
 
-	switch block.Type {
-	case "PUBLIC KEY":
-		// PKCS#8 / SubjectPublicKeyInfo 格式
-		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("解析 PKIX 公钥失败: %v", err)
-		}
-
-		rsaPub, ok := pub.(*rsa.PublicKey)
-		if !ok {
-			return nil, fmt.Errorf("不是 RSA 公钥")
-		}
-		return rsaPub, nil
-
-	case "RSA PUBLIC KEY":
-		// PKCS#1 格式
-		return x509.ParsePKCS1PublicKey(block.Bytes)
-
-	default:
-		return nil, fmt.Errorf("不支持的公钥类型: %s", block.Type)
+	// 依次尝试常见私钥格式
+	if key, err := x509.ParsePKCS8PrivateKey(der); err == nil {
+		return key.(*rsa.PrivateKey), nil
 	}
+
+	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
+		return key, nil
+	}
+
+	return nil, fmt.Errorf("无法识别私钥格式")
+}
+
+// decodeToDER 把输入统一转成 DER 字节
+// 优先按 Base64 解码；如果不是合法 Base64，则当作原始 DER
+func decodeToDER(data []byte) ([]byte, error) {
+	trimmed := strings.TrimSpace(string(data))
+
+	der, err := base64.StdEncoding.DecodeString(trimmed)
+	if err != nil {
+		// 不是 Base64，就当作原始 DER
+		return data, nil
+	}
+
+	return der, nil
 }
 
 // RSAEncryptWithPublicKey 用公钥加密（OAEP填充）
