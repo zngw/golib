@@ -102,32 +102,34 @@ func Ed25519ParsePrivateKey(privateKey string) (ed25519.PrivateKey, error) {
 }
 
 // Ed25519Sign 使用私钥对消息进行签名
-func Ed25519Sign(privateKey ed25519.PrivateKey, message string) (string, error) {
-	if len(privateKey) != ed25519.PrivateKeySize {
-		return "", errors.New("invalid ed25519 private key")
+func Ed25519Sign(content, prvKey string) (string, error) {
+	prv, err := Ed25519ParsePrivateKey(prvKey)
+	if err != nil {
+		return "", err
 	}
 
-	if message == "" {
+	if content == "" {
 		return "", errors.New("message is nil")
 	}
 
-	signature := ed25519.Sign(privateKey, []byte(message))
+	signature := ed25519.Sign(prv, []byte(content))
 
 	signStr := base64.StdEncoding.EncodeToString(signature)
 	return signStr, nil
 }
 
 // Ed25519Verify 使用公钥验证签名
-func Ed25519Verify(publicKey ed25519.PublicKey, message string, signature string) (bool, error) {
-	if len(publicKey) != ed25519.PublicKeySize {
-		return false, errors.New("invalid ed25519 public key")
+func Ed25519Verify(origdata, ciphertext, publicKey string) (bool, error) {
+	pub, err := Ed25519ParsePublicKey(publicKey)
+	if err != nil {
+		return false, err
 	}
 
-	if message == "" {
+	if origdata == "" {
 		return false, errors.New("message is nil")
 	}
 
-	body, err := base64.StdEncoding.DecodeString(signature)
+	body, err := base64.StdEncoding.DecodeString(ciphertext)
 	if err != nil {
 		return false, err
 	}
@@ -136,5 +138,5 @@ func Ed25519Verify(publicKey ed25519.PublicKey, message string, signature string
 		return false, errors.New("invalid ed25519 signature")
 	}
 
-	return ed25519.Verify(publicKey, []byte(message), body), nil
+	return ed25519.Verify(pub, []byte(origdata), body), nil
 }

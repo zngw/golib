@@ -143,7 +143,7 @@ func decodeToDER(data []byte) ([]byte, error) {
 }
 
 // RSAEncryptWithPublicKey 用公钥加密（OAEP填充）
-func RSAEncryptWithPublicKey(message string, pubKey string) (string, error) {
+func RSAEncryptWithPublicKey(message, pubKey string) (string, error) {
 	publicKey, err := LoadPublicKey(pubKey)
 	if err != nil {
 		return "", err
@@ -159,7 +159,7 @@ func RSAEncryptWithPublicKey(message string, pubKey string) (string, error) {
 }
 
 // RSADecryptWithPrivateKey 用私钥解密（OAEP填充）
-func RSADecryptWithPrivateKey(encryptedMessage string, prvKey string) (string, error) {
+func RSADecryptWithPrivateKey(encryptedMessage, prvKey string) (string, error) {
 	privateKey, err := LoadPrivateKey(prvKey)
 	if err != nil {
 		return "", err

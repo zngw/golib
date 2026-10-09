@@ -14,22 +14,10 @@ func main() {
 
 	log.Info("generate keypair \n%s\n\n%s", prvStr, pubStr)
 
-	pub, err := crypt.Ed25519ParsePublicKey(pubStr)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-
-	prv, err := crypt.Ed25519ParsePrivateKey(prvStr)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-
 	message := "Hello Ed25519"
 
 	// 签名
-	signature, err := crypt.Ed25519Sign(prv, message)
+	signature, err := crypt.Ed25519Sign(message, prvStr)
 	if err != nil {
 		log.Error(err.Error())
 		return
@@ -38,7 +26,7 @@ func main() {
 	log.Info("signature string:", signature)
 
 	// 验证签
-	ok, err := crypt.Ed25519Verify(pub, message, signature)
+	ok, err := crypt.Ed25519Verify(message, signature, pubStr)
 	if err != nil {
 		log.Error(err.Error())
 		return
