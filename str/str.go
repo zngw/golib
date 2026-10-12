@@ -33,6 +33,70 @@ func StringToFloat(str string) (f float64) {
 	return
 }
 
+func ToFloat64(v any) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int:
+		return float64(n)
+	case int8:
+		return float64(n)
+	case int16:
+		return float64(n)
+	case int32:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case uint:
+		return float64(n)
+	case uint8:
+		return float64(n)
+	case uint16:
+		return float64(n)
+	case uint32:
+		return float64(n)
+	case uint64:
+		return float64(n)
+	case float32:
+		return float64(n)
+	case string:
+		return StringToFloat(v.(string))
+	}
+	return 0
+}
+
+func ToInt(v any) int {
+	switch n := v.(type) {
+	case int8:
+		return int(n)
+	case int16:
+		return int(n)
+	case int32:
+		return int(n)
+	case int64:
+		return int(n)
+	case uint:
+		return int(n)
+	case uint8:
+		return int(n)
+	case uint16:
+		return int(n)
+	case uint32:
+		return int(n)
+	case uint64:
+		return int(n)
+	case float32:
+		return int(n)
+	case float64:
+		return int(n)
+	case int:
+		return n
+	case string:
+		return StringToInt(v.(string))
+	}
+	return 0
+}
+
 // ToString any类型转成字符串，非基础类型用json格式
 func ToString(a any) string {
 	switch v := a.(type) {
