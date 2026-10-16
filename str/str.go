@@ -97,6 +97,43 @@ func ToInt(v any) int {
 	return 0
 }
 
+func ToInt64(v any) int64 {
+	switch n := v.(type) {
+	case int8:
+		return int64(n)
+	case int16:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case int64:
+		return n
+	case uint:
+		return int64(n)
+	case uint8:
+		return int64(n)
+	case uint16:
+		return int64(n)
+	case uint32:
+		return int64(n)
+	case uint64:
+		return int64(n)
+	case float32:
+		return int64(n)
+	case float64:
+		return int64(n)
+	case int:
+		return int64(n)
+	case string:
+		i64, err := strconv.ParseInt(n, 10, 64)
+		if err != nil {
+			return 0
+		} else {
+			return i64
+		}
+	}
+	return 0
+}
+
 // ToString any类型转成字符串，非基础类型用json格式
 func ToString(a any) string {
 	switch v := a.(type) {
