@@ -5,7 +5,7 @@
 package zchan
 
 import (
-	"time"
+	"fmt"
 
 	"github.com/zngw/golib/ringbuffer"
 )
@@ -28,6 +28,10 @@ func (uc *ZChan[T]) BufLen() int {
 
 // New 新建一个无限缓存的Channel，并指定In和Out大小(In和Out设置得一样大)
 func New[T any](initCapacity int) (ch *ZChan[T], err error) {
+	if initCapacity <= 0 {
+		return nil, fmt.Errorf("initCapacity 必须大于 0")
+	}
+
 	rb, err := ringbuffer.NewRingBuffer[T](512)
 	if err != nil {
 		return
@@ -44,7 +48,10 @@ func New[T any](initCapacity int) (ch *ZChan[T], err error) {
 
 // 内部Worker Goroutine实现
 func process[T any](in, out chan T, ch *ZChan[T]) {
-	defer close(out) // in 关闭，数据读取后也把out关闭
+	defer func() {
+		drainBuffer(ch, out)
+		close(out)
+	}()
 
 	// 不断从in中读取数据放入到out或者buf中
 loop:
@@ -74,40 +81,47 @@ loop:
 
 		// 第三步：处理buf，一直尝试把buf中的数据放入到out中，直到buf中没有数据
 		for ch.buffer.Len() > 0 {
+			// 先尝试从 in 收新数据，避免阻塞
 			select {
-			// 为了避免阻塞in，还要尝试从in中读取数据
 			case val, ok := <-in:
 				if !ok {
-					// in 关闭了，退出loop
 					break loop
 				}
-				// 因为这个时候out是满的，新数据直接放入buf中
 				ch.buffer.Write(val)
+				continue // 继续尝试排 buffer
+			default:
+			}
 
-			// 将buf中数据放入out
-			case out <- ch.buffer.Peek():
-				ch.buffer.Pop()
-
+			// in 当前没数据，尝试把 buffer 头部发到 out
+			val, ok := ch.buffer.Peek()
+			if !ok {
+				break
+			}
+			select {
+			case out <- val:
+				ch.buffer.Pop() // 发送成功后再弹
 				if ch.buffer.IsEmpty() {
 					ch.buffer.Reset()
 				}
+			default:
+				// out 也满了，暂时排不动，回到外层继续从 in 收
+				break
 			}
 		}
 	}
+}
 
-	// in被关闭后，将buf中剩余数据排入out，使用超时防止out已满时永久阻塞
-	drainTimeout := time.Second * 5
-	timer := time.NewTimer(drainTimeout)
-	defer timer.Stop()
-
-drain:
+func drainBuffer[T any](ch *ZChan[T], out chan T) {
 	for ch.buffer.Len() > 0 {
-		val := ch.buffer.Pop()
-		timer.Reset(drainTimeout)
+		val, ok := ch.buffer.Pop()
+		if !ok {
+			break
+		}
+
 		select {
 		case out <- val:
-		case <-timer.C:
-			break drain
+		default:
+			// out 已满或无人消费时直接丢弃，避免永久阻塞
 		}
 	}
 }

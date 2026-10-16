@@ -73,6 +73,11 @@ func (r *RingBuffer[T]) Read() (data T, err error) {
 
 	// 读取数据，并将读指针向右移动一位
 	data = r.readCell.Data[r.readCell.r]
+
+	// 读后置零，避免引用滞留
+	var zero T
+	r.readCell.Data[r.readCell.r] = zero
+
 	r.readCell.r++
 	r.count--
 
@@ -89,27 +94,27 @@ func (r *RingBuffer[T]) Read() (data T, err error) {
 }
 
 // Pop 读一个元素，读完后移动指针
-func (r *RingBuffer[T]) Pop() (data T) {
+func (r *RingBuffer[T]) Pop() (data T, ok bool) {
 	data, err := r.Read()
 	if errors.Is(err, ErrIsEmpty) {
-		fmt.Print(ErrIsEmpty.Error())
 		return
 	}
+	ok = true
 	return
 }
 
 // Peek 窥视 读一个元素，仅读但不移动指针
-func (r *RingBuffer[T]) Peek() (data T) {
+func (r *RingBuffer[T]) Peek() (data T, ok bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	if r.count == 0 {
-		fmt.Print(ErrIsEmpty.Error())
 		return
 	}
 
 	// 仅读
 	data = r.readCell.Data[r.readCell.r]
+	ok = true
 	return
 }
 
@@ -204,10 +209,16 @@ func (r *RingBuffer[T]) Reset() {
 		cur = next
 	}
 
-	keepLast.w = 0
-	keepLast.r = 0
 	keepFirst.r = 0
 	keepFirst.w = 0
+	keepFirst.fullFlag = false
+
+	keepLast.r = 0
+	keepLast.w = 0
+	keepLast.fullFlag = false
+
+	r.readCell = keepFirst
+	r.writeCell = keepFirst
 	r.cellCount = 2
 	r.count = 0
 

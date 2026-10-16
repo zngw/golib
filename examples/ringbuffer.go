@@ -25,7 +25,7 @@ func main() {
 
 	// 弹出5个元素
 	for i := 0; i < 5; i++ {
-		data := rb.Pop()
+		data, _ := rb.Pop()
 		fmt.Printf("pop data:%v, capacity:%v, len:%v \n", data, rb.Capacity(), rb.Len())
 	}
 
@@ -37,7 +37,7 @@ func main() {
 
 	// 弹出所有元素
 	for !rb.IsEmpty() {
-		data := rb.Pop()
+		data, _ := rb.Pop()
 		fmt.Printf("pop data:%v, capacity:%v, len:%v \n", data, rb.Capacity(), rb.Len())
 	}
 }
