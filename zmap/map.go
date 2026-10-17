@@ -23,6 +23,13 @@ func New[K comparable, V any]() *ZMap[K, V] {
 	}
 }
 
+// Clean 清空
+func (zm *ZMap[K, V]) Clean() {
+	zm.mu.Lock()
+	clear(zm.data)
+	zm.mu.Unlock()
+}
+
 // Store 存储键值对
 func (zm *ZMap[K, V]) Store(key K, value V) {
 	zm.mu.Lock()
